@@ -7,7 +7,7 @@ from model.optimization import CreateOptimizer
 
 ### Hyper-parameters and Settings ###
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu_num', type=str, default='23')
+parser.add_argument('--gpu_num', type=str, default='0123')
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--is_training', action='store_true')
 parser.add_argument('--seq_len', type=int, default=512)
