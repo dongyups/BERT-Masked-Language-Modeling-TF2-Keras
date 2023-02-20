@@ -24,7 +24,7 @@ class BertConfig(object):
     def __init__(
         self,
         vocab_size, 
-        pos_scale=365.2425,
+        pos_scale=1.0,
         num_layers=12, 
         hidden_size=768, 
         intermediate_size=3072, 
