@@ -1,0 +1,1 @@
+{"vocab_size": 30522, "pos_scale": 365.2425, "num_layers": 12, "hidden_size": 768, "intermediate_size": 3072, "num_heads": 12, "hidden_dropout": 0.1, "attention_dropout": 0.1, "hidden_act": "gelu", "epsilon": 1e-12, "initializer": "truncated_normal"}
