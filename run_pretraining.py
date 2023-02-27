@@ -185,7 +185,8 @@ def main(train_dataset, eval_dataset):
         for step_v, v in enumerate(eval_dataset):
             distributed_infer_step(v)
             # show evaluate loss & metric logs per 1 step
-            print(f'Steps : {step_v+1}/{arg.total_infer_steps}  Test_Loss : {float(infer_loss.result()):.7f}  Test_Metric : {float(infer_metric.result()):.7f}', end='\r')
+            print(f'Steps : {step_v+1}/{arg.total_infer_steps}  Test_Loss : {float(infer_loss.result()):.7f}  Test_Metric : {float(infer_metric.result()):.7f}'
+                  , end='\r')
         # show loss & metric logs per 1 epoch
         print("")
         print(f'Test_Loss : [{float(infer_loss.result()):.7f}]   Test_Acc : [{float(infer_metric.result()):.7f}]')
