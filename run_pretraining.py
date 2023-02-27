@@ -229,4 +229,4 @@ if __name__ == "__main__":
     
     ### Run ###
     main(train_dataset=train_dataset, eval_dataset=eval_dataset)
-    atexit.register(strategy._extended._collective_ops._pool.close)
+    if strategy.num_replicas_in_sync > 1: atexit.register(strategy._extended._collective_ops._pool.close)
