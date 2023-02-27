@@ -141,7 +141,8 @@ def main(train_dataset, eval_dataset):
             for step_x, x in enumerate(train_dataset):
                 distributed_train_step(x)
                 # show training loss & metric logs per 1 step
-                print(f'Steps : {step_x+1}/{arg.total_train_steps}  Train_Loss : {float(train_loss.result()):.7f}  Train_Metric : {float(train_metric.result()):.7f}', end='\r')
+                print(f'Steps : {step_x+1}/{arg.total_train_steps}  Train_Loss : {float(train_loss.result()):.7f}  Train_Metric : {float(train_metric.result()):.7f}'
+                      , end='\r')
             with train_summary_writer.as_default():
                 tf.summary.scalar('Loss', train_loss.result(), step=epoch)
                 tf.summary.scalar('Accuracy', train_metric.result(), step=epoch)
@@ -149,7 +150,8 @@ def main(train_dataset, eval_dataset):
             for step_v, v in enumerate(eval_dataset):
                 distributed_infer_step(v)
                 # show evaluate loss & metric logs per 1 step
-                print(f'Steps : {step_v+1}/{arg.total_infer_steps}  Valid_Loss : {float(infer_loss.result()):.7f}  Valid_Metric : {float(infer_metric.result()):.7f}', end='\r')
+                print(f'Steps : {step_v+1}/{arg.total_infer_steps}  Valid_Loss : {float(infer_loss.result()):.7f}  Valid_Metric : {float(infer_metric.result()):.7f}'
+                      , end='\r')
             with infer_summary_writer.as_default():
                 tf.summary.scalar('Loss', infer_loss.result(), step=epoch)
                 tf.summary.scalar('CosineSimilarity', infer_metric.result(), step=epoch)
