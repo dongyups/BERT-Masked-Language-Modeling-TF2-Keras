@@ -12,8 +12,8 @@ The original BERT pre-training code is supposed to be run by two tasks: MLM & NS
 In this code, however, NSP is intentionally excluded thus the original segment embedding is omitted in the inputs.
 
 ### How to use
-Upload your own datasets in `datasets` folder and load them inside `run_pretraining.py`. Refer to the annotations.\
-FP16 option is set to default and the indices of GPUs support the multi-GPU option.
+Upload your own datasets in `datasets` folder and load them inside `run_pretraining.py` and `run_classifier`.\
+Refer to the annotations. FP16 option is set to default and the indices of GPUs support the multi-GPU option.
 ```python
 # train with val
 python run_pretraining.py --is_training
