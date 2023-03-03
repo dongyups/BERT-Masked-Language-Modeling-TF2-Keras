@@ -15,8 +15,10 @@ In this code, however, NSP is intentionally excluded thus the original segment e
 Upload your own datasets in `datasets` folder and load them inside `run_pretraining.py`. Refer to the annotations.\
 FP16 option is set to default and the indices of GPUs support the multi-GPU option.
 ```python
-# train
-python run_training.py --is_training --gpu_num 23
+# train with val
+python run_pretraining.py --is_training
+python run_classifier.py --is_training
 # eval
-python run_training.py --gpu_num 0
+python run_pretraining.py
+python run_classifier.py
 ```
