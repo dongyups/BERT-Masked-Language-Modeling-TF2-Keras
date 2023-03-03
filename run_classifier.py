@@ -191,6 +191,7 @@ def main(train_dataset, eval_dataset):
         the_results = np.concatenate((the_origins, the_preds, the_probs), axis=1)
         the_columns = ','.join(['Label_ID','Label_Pred']+['Prob_'+str(n) for n in range(arg.num_labels)])
         np.savetxt(arg.result_dir+"bert_cls_sample.csv", the_results, delimiter=',', header=the_columns, comments='')
+        print("Classification Results Exported to:", arg.result_dir)
 
     print("Done")
 
