@@ -24,7 +24,7 @@ class BertConfig(object):
     def __init__(
         self,
         vocab_size, 
-        pos_scale=1.0,
+        pos_scale=365.2425,
         num_layers=12, 
         hidden_size=768, 
         intermediate_size=3072, 
@@ -300,9 +300,9 @@ def MLMBert(
     ):
     config = copy.deepcopy(config)
     ### inputs
-    inp_seq = Input(batch_size=batch_size, shape=(seq_len,))
-    inp_pos = Input(batch_size=batch_size, shape=(seq_len,))
-    mlm_pos = Input(batch_size=batch_size, shape=(max_pred_per_seq,))
+    inp_seq = Input(batch_size=batch_size, shape=(seq_len,), dtype=tf.int64)
+    inp_pos = Input(batch_size=batch_size, shape=(seq_len,), dtype=tf.float32)
+    mlm_pos = Input(batch_size=batch_size, shape=(max_pred_per_seq,), dtype=tf.int64)
     ### BERT module
     sequence_output, _, embedding_table = BertModel(
         is_training, config.vocab_size, config.pos_scale, config.num_layers, config.hidden_size, config.intermediate_size, config.num_heads, 
@@ -334,8 +334,8 @@ def ClassifierBert(
         config.hidden_dropout=0.0
         config.attention_dropout=0.0
     ### inputs
-    inp_seq = Input(shape=(seq_len,))
-    inp_pos = Input(shape=(seq_len,))
+    inp_seq = Input(shape=(seq_len,), dtype=tf.int64)
+    inp_pos = Input(shape=(seq_len,), dtype=tf.float32)
     ### BERT module
     _, pooled_output, _ = BertModel(
         is_training, config.vocab_size, config.pos_scale, config.num_layers, config.hidden_size, config.intermediate_size, config.num_heads, 
@@ -345,15 +345,14 @@ def ClassifierBert(
     pooled_output = layers.Dropout(rate=config.hidden_dropout)(pooled_output)
     logits = OutputWeights(b_units=num_labels, h_units=config.hidden_size)(pooled_output)
     logits = OutputBias(b_units=num_labels)(logits)
-    probabilities = tf.cast(tf.nn.softmax(logits, axis=-1), dtype=tf.float32)
-    log_probs = tf.cast(tf.nn.log_softmax(logits, axis=-1), dtype=tf.float32)
+    logits = tf.cast(logits, dtype=tf.float32)
     ### model construction
-    model = Model(inputs=[inp_seq, inp_pos], outputs=[log_probs, probabilities])
+    model = Model(inputs=[inp_seq, inp_pos], outputs=logits)
     ### Load pre-trained weights of BERT module from MLM
     if bert_module_weights_path is not None:
         with open(bert_module_weights_path, "rb") as f:
             bert_module_weights = pickle.load(f)
         model.layers[2].set_weights(bert_module_weights)
         del bert_module_weights
-        print("Pre-trained Weights of BERT Module loaded!")
+        print("Pre-trained Weights of BERT Module Loaded")
     return model
