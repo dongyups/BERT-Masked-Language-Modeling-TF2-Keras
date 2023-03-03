@@ -6,17 +6,18 @@ from model.optimization import CreateOptimizer
 
 ### Hyper-parameters and Settings ###
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu_num', type=str, default='23')
+parser.add_argument('--gpu_num', type=str, default='0123')
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--is_training', action='store_true')
 parser.add_argument('--seq_len', type=int, default=512)
 parser.add_argument('--max_pred_per_seq', type=int, default=77, help="set this to around max_seq_length * masked_lm_prob")
 parser.add_argument('--lr', type=float, default=1e-4)
+parser.add_argument('--warmup_proportion', type=float, default=0.01)
 parser.add_argument('--epochs', type=int, default=40)
 parser.add_argument('--batch_size', type=int, default=256, help="batch size for one GPU")
 parser.add_argument('--config', type=str, default="./datasets/bert_config.json")
 parser.add_argument('--data_dir', type=str, default="./datasets/", help="load train/val/test datasets")
-parser.add_argument('--save_dir', type=str, default="./saved_weights/", help="save pre-trained model weights")
+parser.add_argument('--save_dir', type=str, default="./saved_weights/bert_mlm/", help="save pre-trained model weights")
 parser.add_argument('--log_dir', type=str, default="./logs/bert_mlm/", help="save tensorboard logs")
 arg = parser.parse_args()
 
@@ -34,7 +35,7 @@ def main(train_dataset, eval_dataset):
         )
         model.summary()
         optimizer = CreateOptimizer(
-            warmup_steps=int(0.01 * arg.total_train_steps * arg.epochs), 
+            warmup_steps=int(arg.warmup_proportion * arg.total_train_steps * arg.epochs), 
             num_train_steps=int(arg.total_train_steps * arg.epochs), 
             initial_learning_rate=arg.lr, 
             weight_decay_rate=0.01, 
@@ -43,6 +44,7 @@ def main(train_dataset, eval_dataset):
             epsilon=1e-6, 
         )
         optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer, dynamic=True)
+    ### model loss and metrics ###
     train_loss = tf.keras.metrics.Mean(name="loss")
     train_metric = tf.keras.metrics.Accuracy(name="acc")
     infer_loss = tf.keras.metrics.Mean(name="val_loss")
@@ -141,7 +143,7 @@ def main(train_dataset, eval_dataset):
             for step_x, x in enumerate(train_dataset):
                 distributed_train_step(x)
                 # show training loss & metric logs per 1 step
-                print(f'Steps : {step_x+1}/{arg.total_train_steps}  Train_Loss : {float(train_loss.result()):.7f}  Train_Metric : {float(train_metric.result()):.7f}'
+                print(f'Steps : {step_x+1}/{arg.total_train_steps} Train_Loss : {float(train_loss.result()):.7f} Train_Metric : {float(train_metric.result()):.7f}'
                       , end='\r')
             with train_summary_writer.as_default():
                 tf.summary.scalar('Loss', train_loss.result(), step=epoch)
@@ -150,26 +152,26 @@ def main(train_dataset, eval_dataset):
             for step_v, v in enumerate(eval_dataset):
                 distributed_infer_step(v)
                 # show evaluate loss & metric logs per 1 step
-                print(f'Steps : {step_v+1}/{arg.total_infer_steps}  Valid_Loss : {float(infer_loss.result()):.7f}  Valid_Metric : {float(infer_metric.result()):.7f}'
+                print(f'Steps : {step_v+1}/{arg.total_infer_steps} Valid_Loss : {float(infer_loss.result()):.7f} Valid_Metric : {float(infer_metric.result()):.7f}'
                       , end='\r')
             with infer_summary_writer.as_default():
                 tf.summary.scalar('Loss', infer_loss.result(), step=epoch)
-                tf.summary.scalar('CosineSimilarity', infer_metric.result(), step=epoch)
+                tf.summary.scalar('Accuracy', infer_metric.result(), step=epoch)
 
             # show loss & metric logs per 1 epoch
-            print(f'Epoch : {epoch+1}/{int(arg.epochs)}  '\
-                f'Train_Loss : [{float(train_loss.result()):.7f}]  Train_Acc : [{float(train_metric.result()):.7f}]  '\
-                f'Valid_Loss : [{float(infer_loss.result()):.7f}]  Valid_Acc : [{float(infer_metric.result()):.7f}]')
+            print(f'Epoch : {epoch+1}/{int(arg.epochs)} '\
+                f'Train_Loss : [{float(train_loss.result()):.7f}] Train_Acc : [{float(train_metric.result()):.7f}] '\
+                f'Valid_Loss : [{float(infer_loss.result()):.7f}] Valid_Acc : [{float(infer_metric.result()):.7f}]')
 
             # save model based on evaluation loss
             if best_loss > infer_loss.result():
                 best_loss = infer_loss.result()
                 best_model = model
                 # save bert module weights only (시간 소요 크게 없음)
-                with open(arg.save_dir + "bert_module.pickle", "wb") as f:
+                with open("/".join(arg.save_dir.split("/")[:-2]) + "/bert_module.pickle", "wb") as f:
                     pickle.dump(best_model.layers[2].get_weights(), f)
                 # save total mlm model (시간 소요 조금 있음)
-                tf.saved_model.save(best_model, arg.save_dir + "bert_mlm/")
+                tf.saved_model.save(best_model, arg.save_dir)
                 print('Model Saved!')
 
             # loss/metric reset
@@ -180,16 +182,16 @@ def main(train_dataset, eval_dataset):
 
     else:
         print("Inference Start")
-        model = tf.saved_model.load(arg.save_dir + "bert_mlm/")
+        model = tf.saved_model.load(arg.save_dir)
         print("Model Weights Loaded")        
         for step_v, v in enumerate(eval_dataset):
             distributed_infer_step(v)
             # show evaluate loss & metric logs per 1 step
-            print(f'Steps : {step_v+1}/{arg.total_infer_steps}  Test_Loss : {float(infer_loss.result()):.7f}  Test_Metric : {float(infer_metric.result()):.7f}'
+            print(f'Steps : {step_v+1}/{arg.total_infer_steps} Test_Loss : {float(infer_loss.result()):.7f} Test_Metric : {float(infer_metric.result()):.7f}'
                   , end='\r')
         # show loss & metric logs per 1 epoch
         print("")
-        print(f'Test_Loss : [{float(infer_loss.result()):.7f}]   Test_Acc : [{float(infer_metric.result()):.7f}]')
+        print(f'Test_Loss : [{float(infer_loss.result()):.7f}] Test_Acc : [{float(infer_metric.result()):.7f}]')
 
     print("Done")
 
@@ -215,7 +217,7 @@ if __name__ == "__main__":
     tf.keras.mixed_precision.set_global_policy(policy)
     strategy = SelectStrategy()
     arg.batch_size = arg.batch_size * strategy.num_replicas_in_sync
-    
+
     
     ### Prepare Datasets ###
     arg.config = BertConfig.from_json_file(json_file=arg.config)
@@ -229,7 +231,7 @@ if __name__ == "__main__":
     eval_dataset = (eval_dataset.cache().batch(arg.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE))
     eval_dataset = strategy.experimental_distribute_dataset(eval_dataset)
 
-    
+
     ### Run ###
     main(train_dataset=train_dataset, eval_dataset=eval_dataset)
     if strategy.num_replicas_in_sync > 1: atexit.register(strategy._extended._collective_ops._pool.close)
