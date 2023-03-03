@@ -219,17 +219,24 @@ if __name__ == "__main__":
     arg.batch_size = arg.batch_size * strategy.num_replicas_in_sync
 
     
-    ### Prepare Datasets ###
+    ### Datasets Loader ###
     arg.config = BertConfig.from_json_file(json_file=arg.config)
     """--------------------------------------"""
     """----- insert input datasets here -----"""
     """--------------------------------------"""
-    arg.total_train_steps = int(tf.math.ceil(len(train_dataset)/arg.batch_size))
-    arg.total_infer_steps = int(tf.math.ceil(len(eval_dataset)/arg.batch_size))
-    train_dataset = (train_dataset.cache().shuffle(buffer_size=len(train_dataset)).batch(arg.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE))
-    train_dataset = strategy.experimental_distribute_dataset(train_dataset)
-    eval_dataset = (eval_dataset.cache().batch(arg.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE))
-    eval_dataset = strategy.experimental_distribute_dataset(eval_dataset)
+
+
+    ### Prepare Datasets ###
+    if arg.is_training:
+        train_dataset = (train_dataset.shuffle(buffer_size=len(train_dataset)).batch(arg.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE))
+        train_dataset = strategy.experimental_distribute_dataset(train_dataset)
+        eval_dataset = (eval_dataset.batch(arg.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE))
+        eval_dataset = strategy.experimental_distribute_dataset(eval_dataset)
+    else:
+        train_dataset = None
+        arg.total_train_steps = 0
+        eval_dataset = (eval_dataset.batch(arg.batch_size).prefetch(buffer_size=tf.data.AUTOTUNE))
+        eval_dataset = strategy.experimental_distribute_dataset(eval_dataset)
 
 
     ### Run ###
